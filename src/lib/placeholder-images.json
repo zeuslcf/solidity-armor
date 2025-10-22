@@ -1,0 +1,10 @@
+{
+  "placeholderImages": [
+    {
+      "id": "sign-in-hero",
+      "description": "Abstract image representing digital security and networks.",
+      "imageUrl": "https://images.unsplash.com/photo-1667372283587-e1557c08aca4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxkaWdpdGFsJTIwc2VjdXJpdHl8ZW58MHx8fHwxNzYwOTk5MzQxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "digital security"
+    }
+  ]
+}

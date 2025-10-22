@@ -1,0 +1,164 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Solidity Armor application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user (matches Firebase Auth UID).",
+          "format": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "Scan": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Scan",
+      "type": "object",
+      "description": "Represents a smart contract scan performed by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the scan."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who initiated the scan. (Relationship: User 1:N Scan)"
+        },
+        "contractUrl": {
+          "type": "string",
+          "description": "URL of the smart contract file, can be a gs:// path for uploads or an external URL."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the scan (e.g., pending, running, completed, failed)."
+        },
+        "riskSummary": {
+          "type": "string",
+          "description": "A summary of the overall risk identified in the scan."
+        },
+        "scanDate": {
+          "type": "string",
+          "description": "Timestamp indicating when the scan was performed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "contractUrl",
+        "status",
+        "scanDate"
+      ]
+    },
+    "VulnerabilityReport": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "VulnerabilityReport",
+      "type": "object",
+      "description": "Represents a detailed report of vulnerabilities identified in a smart contract scan.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the vulnerability report."
+        },
+        "scanId": {
+          "type": "string",
+          "description": "Reference to the Scan this report belongs to. (Relationship: Scan 1:1 VulnerabilityReport)"
+        },
+        "vulnerabilities": {
+          "type": "array",
+          "description": "An array of identified vulnerabilities.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "scanId",
+        "vulnerabilities"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user data, with userId matching the authenticated user's ID.  This collection stores the users profile data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier (wallet address) of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/scans/{scanId}",
+        "definition": {
+          "entityName": "Scan",
+          "schema": {
+            "$ref": "#/backend/entities/Scan"
+          },
+          "description": "Stores scan data for a specific user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who initiated the scan."
+            },
+            {
+              "name": "scanId",
+              "description": "The unique identifier for the scan."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/scans/{scanId}/vulnerabilityReports/{reportId}",
+        "definition": {
+          "entityName": "VulnerabilityReport",
+          "schema": {
+            "$ref": "#/backend/entities/VulnerabilityReport"
+          },
+          "description": "Stores vulnerability reports associated with a scan for a specific user. Inherits userId from parent scan document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who initiated the scan."
+            },
+            {
+              "name": "scanId",
+              "description": "The unique identifier for the scan."
+            },
+            {
+              "name": "reportId",
+              "description": "The unique identifier for the vulnerability report."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure user data privacy and security while supporting the application's core features. Each user's data (scans and reports) is stored under a path unique to their userId (wallet address), ensuring that only the user has access to their own data. This design leverages path-based ownership for private data, as suggested by the architectural principles. This design provides Authorization Independence (CRITICAL) as it isolates each users data into individual collections, eliminating the need for security rules to validate any parent document to validate ownership.\n\nSpecifically:\n\n*   `/users/{userId}`:  Stores user-specific data.\n*   `/users/{userId}/scans/{scanId}`: Stores scan data for a specific user.  This structure enables simple, secure rules based on the `userId` path. By leveraging subcollections, we ensure that listing operations are secure (QAPs) because the rules can easily filter by the `userId` embedded in the path.  It also provides Authorization Independence.\n*   `/users/{userId}/scans/{scanId}/vulnerabilityReports/{reportId}`: Stores vulnerability reports associated with a scan for a specific user. This maintains the hierarchical relationship, ensuring that only the user who initiated the scan can access the report. The structure uses denormalization by embedding the `userId` within the scans documents, enabling authorization rules to be simple and to avoid any `get()` calls. Since the userId can be validated by `request.auth.uid`, the scan will only be created if the request is made by the user.\n\nThis design prioritizes security, scalability, and debuggability by enforcing clear ownership and avoiding complex authorization logic."
+  }
+}
